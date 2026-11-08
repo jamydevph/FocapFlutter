@@ -5,11 +5,15 @@ abstract final class FocapShape {
   static const double buttonRadius = 16;
   static const double cardRadius = 20;
   static const double cardRadiusLarge = 28;
+  static const double navRadius = 24;
+  static const double navTabRadius = 18;
 
   static const chip = BorderRadius.all(Radius.circular(chipRadius));
   static const button = BorderRadius.all(Radius.circular(buttonRadius));
   static const card = BorderRadius.all(Radius.circular(cardRadius));
   static const cardLarge = BorderRadius.all(Radius.circular(cardRadiusLarge));
+  static const nav = BorderRadius.all(Radius.circular(navRadius));
+  static const navTab = BorderRadius.all(Radius.circular(navTabRadius));
 
   static const shadowSoft = [
     BoxShadow(color: Color(0x120E1024), offset: Offset(0, 6), blurRadius: 18),
@@ -17,5 +21,9 @@ abstract final class FocapShape {
 
   static const shadowRaised = [
     BoxShadow(color: Color(0x1A0E1024), offset: Offset(0, 12), blurRadius: 32),
+  ];
+
+  static const shadowNav = [
+    BoxShadow(color: Color(0x400E1024), offset: Offset(0, 14), blurRadius: 30),
   ];
 }
