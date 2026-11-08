@@ -58,4 +58,12 @@ abstract final class FocapText {
     letterSpacing: 0,
     height: 1.4,
   );
+
+  static const navLabel = TextStyle(
+    fontFamily: fontFamily,
+    fontSize: 13,
+    fontWeight: FontWeight.w500,
+    letterSpacing: 0,
+    height: 1.5,
+  );
 }
