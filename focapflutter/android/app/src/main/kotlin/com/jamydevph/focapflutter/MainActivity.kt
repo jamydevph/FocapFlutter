@@ -1,4 +1,4 @@
-package com.example.focapflutter
+package com.jamydevph.focapflutter
 
 import io.flutter.embedding.android.FlutterActivity
 
