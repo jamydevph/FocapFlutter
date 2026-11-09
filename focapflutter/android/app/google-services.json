@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "164201107092",
+    "project_id": "focap-app-flutter",
+    "storage_bucket": "focap-app-flutter.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:164201107092:android:e459a4e496b08f96596e81",
+        "android_client_info": {
+          "package_name": "com.jamydevph.focapflutter"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC7ilTHHUrPSlN7d8g_PATaadSBxyqVzH8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
