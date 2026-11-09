@@ -1,0 +1,23 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{db}/documents {
+    match /users/{uid}/{document=**} {
+      allow read, delete: if request.auth != null && request.auth.uid == uid;
+    }
+    match /users/{uid} {
+      allow create, update: if request.auth != null && request.auth.uid == uid;
+    }
+    match /users/{uid}/devices/{deviceId} {
+      allow create, update: if request.auth != null && request.auth.uid == uid
+        && request.resource.data.platform in ['android', 'ios'];
+    }
+    match /users/{uid}/focusSessions/{id} {
+      allow create: if request.auth != null && request.auth.uid == uid
+        && request.resource.data.status in ['completed', 'cancelled', 'failed']
+        && request.resource.data.endsAt > request.resource.data.startedAt
+        && request.resource.data.durationMinutes is int
+        && request.resource.data.durationMinutes > 0;
+      allow update: if false;
+    }
+  }
+}

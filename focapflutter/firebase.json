@@ -1,0 +1,24 @@
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "focap-app-flutter",
+          "appId": "1:164201107092:android:e459a4e496b08f96596e81",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "focap-app-flutter",
+          "configurations": {
+            "android": "1:164201107092:android:e459a4e496b08f96596e81"
+          }
+        }
+      }
+    }
+  },
+  "firestore": {
+    "rules": "firestore.rules"
+  }
+}
