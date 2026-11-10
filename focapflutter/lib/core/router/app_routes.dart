@@ -9,6 +9,7 @@ abstract final class AppRoutes {
   static const history = '/history';
   static const settings = '/settings';
   static const editProfile = '/edit-profile';
+  static const debug = '/debug';
   static const debugTokens = '/debug/tokens';
 
   static const public = {login, register, forgotPassword};
