@@ -5,6 +5,7 @@ import 'package:focapflutter/core/router/app_redirect.dart';
 import 'package:focapflutter/core/router/app_routes.dart';
 import 'package:focapflutter/ui/app_selection/app_selection_screen.dart';
 import 'package:focapflutter/ui/dashboard/dashboard_screen.dart';
+import 'package:focapflutter/ui/debug/debug_screen.dart';
 import 'package:focapflutter/ui/edit_profile/edit_profile_screen.dart';
 import 'package:focapflutter/ui/forgot_password/forgot_password_screen.dart';
 import 'package:focapflutter/ui/history/history_screen.dart';
@@ -53,11 +54,16 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.editProfile,
         builder: (context, state) => const EditProfileScreen(),
       ),
-      if (kDebugMode)
+      if (kDebugMode) ...[
+        GoRoute(
+          path: AppRoutes.debug,
+          builder: (context, state) => const DebugScreen(),
+        ),
         GoRoute(
           path: AppRoutes.debugTokens,
           builder: (context, state) => const TokenPreviewScreen(),
         ),
+      ],
       StatefulShellRoute.indexedStack(
         builder: (context, state, shell) => AppShell(shell: shell),
         branches: [

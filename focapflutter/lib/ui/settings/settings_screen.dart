@@ -23,7 +23,7 @@ class SettingsScreen extends StatelessWidget {
         ),
         RouteLink('Log out → Login', () => context.go(AppRoutes.login)),
         if (kDebugMode)
-          RouteLink('Design tokens', () => context.push(AppRoutes.debugTokens)),
+          RouteLink('Debug tools', () => context.push(AppRoutes.debug)),
       ],
     );
   }
