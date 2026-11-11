@@ -2,12 +2,16 @@ package com.jamydevph.focapflutter
 
 import android.app.Activity
 import android.content.Context
+import android.os.Handler
+import android.os.Looper
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.embedding.engine.plugins.activity.ActivityAware
 import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
 import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
 
 class BlockerPlugin :
     FlutterPlugin,
@@ -21,9 +25,14 @@ class BlockerPlugin :
     private var appContext: Context? = null
     private var activity: Activity? = null
     private var stubSession: Map<String, Any>? = null
+    private var installedApps: InstalledApps? = null
+    private var background: ExecutorService? = null
+    private val mainThread = Handler(Looper.getMainLooper())
 
     override fun onAttachedToEngine(binding: FlutterPlugin.FlutterPluginBinding) {
         appContext = binding.applicationContext
+        installedApps = InstalledApps(binding.applicationContext)
+        background = Executors.newSingleThreadExecutor()
         methods = MethodChannel(binding.binaryMessenger, METHOD_CHANNEL).also {
             it.setMethodCallHandler(this)
         }
@@ -39,6 +48,9 @@ class BlockerPlugin :
         events = null
         eventSink = null
         appContext = null
+        installedApps = null
+        background?.shutdownNow()
+        background = null
     }
 
     override fun onAttachedToActivity(binding: ActivityPluginBinding) {
@@ -59,7 +71,7 @@ class BlockerPlugin :
 
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
         when (call.method) {
-            "getInstalledApps" -> result.success(stubInstalledApps())
+            "getInstalledApps" -> sendInstalledApps(result)
             "isAccessibilityEnabled" -> result.success(stubBool(false))
             "openAccessibilitySettings" -> result.success(stubNoOp())
             "startSession" -> startStubSession(call, result)
@@ -93,13 +105,23 @@ class BlockerPlugin :
 
     private fun stubNoOp(): Any? = null
 
-    private fun stubInstalledApps(): List<Map<String, Any>> = listOf(
-        mapOf(
-            "packageName" to "com.jamydevph.stub",
-            "label" to "Stub app",
-            "icon" to ByteArray(0),
-        ),
-    )
+    private fun sendInstalledApps(result: MethodChannel.Result) {
+        val apps = installedApps
+        val executor = background
+        if (apps == null || executor == null) {
+            result.error(NOT_ATTACHED, "getInstalledApps called before the engine attached", null)
+            return
+        }
+        executor.execute {
+            val outcome = runCatching { apps.list() }
+            mainThread.post {
+                if (methods == null) return@post
+                outcome
+                    .onSuccess { result.success(it) }
+                    .onFailure { result.error(INSTALLED_APPS_FAILED, it.message, null) }
+            }
+        }
+    }
 
     private fun startStubSession(call: MethodCall, result: MethodChannel.Result) {
         val sessionId = call.argument<String>("sessionId")
@@ -135,5 +157,7 @@ class BlockerPlugin :
         const val EVENT_CHANNEL = "focap/blocker/events"
         const val ACCESSIBILITY_CHANGED = "accessibilityChanged"
         const val BAD_ARGUMENTS = "bad_arguments"
+        const val NOT_ATTACHED = "not_attached"
+        const val INSTALLED_APPS_FAILED = "installed_apps_failed"
     }
 }

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:focapflutter/data/models/app_info.dart';
 import 'package:focapflutter/data/services/blocker/blocker_platform.dart';
 import 'package:focapflutter/data/services/blocker/blocker_platform_provider.dart';
 import 'package:uuid/uuid.dart';
@@ -22,32 +23,37 @@ class DebugState {
     this.results = const {},
     this.running = const {},
     this.lastAccessibilityEvent,
+    this.installedApps = const [],
   });
 
   final String platformName;
   final Map<String, String> results;
   final Set<String> running;
   final String? lastAccessibilityEvent;
+  final List<AppInfo> installedApps;
 
   DebugState copyWith({
     Map<String, String>? results,
     Set<String>? running,
     String? lastAccessibilityEvent,
+    List<AppInfo>? installedApps,
   }) => DebugState(
     platformName: platformName,
     results: results ?? this.results,
     running: running ?? this.running,
     lastAccessibilityEvent:
         lastAccessibilityEvent ?? this.lastAccessibilityEvent,
+    installedApps: installedApps ?? this.installedApps,
   );
 }
 
 class DebugViewModel extends Notifier<DebugState> {
   static const testSessionLength = Duration(minutes: 2);
   static const testPackage = 'com.jamydevph.stub';
+  static const installedAppsCall = 'getInstalledApps';
 
   static final calls = <DebugCall>[
-    DebugCall('getInstalledApps', (b) => b.getInstalledApps()),
+    DebugCall(installedAppsCall, (b) => b.getInstalledApps()),
     DebugCall('isAccessibilityEnabled', (b) => b.isAccessibilityEnabled()),
     DebugCall(
       'openAccessibilitySettings',
@@ -103,8 +109,12 @@ class DebugViewModel extends Notifier<DebugState> {
     final blocker = ref.read(blockerPlatformProvider);
     state = state.copyWith(running: {...state.running, call.name});
     String outcome;
+    List<AppInfo>? apps;
+    if (call.name == installedAppsCall) apps = const [];
     try {
-      outcome = 'ok: ${_describe(await call.run(blocker))}';
+      final value = await call.run(blocker);
+      if (value is List<AppInfo>) apps = value;
+      outcome = 'ok: ${_describe(value)}';
     } on Object catch (error) {
       outcome = 'error: $error';
     }
@@ -112,6 +122,7 @@ class DebugViewModel extends Notifier<DebugState> {
     state = state.copyWith(
       results: {...state.results, call.name: outcome},
       running: {...state.running}..remove(call.name),
+      installedApps: apps,
     );
   }
 
