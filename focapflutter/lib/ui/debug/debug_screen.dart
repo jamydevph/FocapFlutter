@@ -4,6 +4,7 @@ import 'package:focapflutter/core/router/app_routes.dart';
 import 'package:focapflutter/core/theme/app_colors.dart';
 import 'package:focapflutter/core/theme/app_shape.dart';
 import 'package:focapflutter/core/theme/app_typography.dart';
+import 'package:focapflutter/data/models/app_info.dart';
 import 'package:focapflutter/ui/debug/debug_view_model.dart';
 import 'package:go_router/go_router.dart';
 
@@ -61,6 +62,17 @@ class DebugScreen extends ConsumerWidget {
                 running: state.running.contains(call.name),
                 onRun: () => viewModel.run(call),
               ),
+            if (state.results.containsKey(
+              DebugViewModel.installedAppsCall,
+            )) ...[
+              const SizedBox(height: 14),
+              Text(
+                'Installed apps (${state.installedApps.length})',
+                style: FocapText.row.copyWith(color: colors.ink),
+              ),
+              const SizedBox(height: 8),
+              for (final app in state.installedApps) _AppRow(app: app),
+            ],
           ],
         ),
       ),
@@ -120,6 +132,56 @@ class _CallTile extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _AppRow extends StatelessWidget {
+  const _AppRow({required this.app});
+
+  final AppInfo app;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final iconCacheWidth = (36 * MediaQuery.devicePixelRatioOf(context))
+        .round();
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        children: [
+          SizedBox.square(
+            dimension: 36,
+            child: app.icon.isEmpty
+                ? Icon(Icons.apps_rounded, color: colors.soft)
+                : Image.memory(
+                    app.icon,
+                    gaplessPlayback: true,
+                    cacheWidth: iconCacheWidth,
+                  ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  app.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: FocapText.row.copyWith(color: colors.ink),
+                ),
+                Text(
+                  app.packageName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: FocapText.bodySmall.copyWith(color: colors.soft),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
