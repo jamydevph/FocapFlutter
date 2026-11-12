@@ -2,8 +2,10 @@ package com.jamydevph.focapflutter
 
 import android.app.Activity
 import android.content.Context
+import android.content.Intent
 import android.os.Handler
 import android.os.Looper
+import android.provider.Settings
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.embedding.engine.plugins.activity.ActivityAware
 import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
@@ -26,12 +28,14 @@ class BlockerPlugin :
     private var activity: Activity? = null
     private var stubSession: Map<String, Any>? = null
     private var installedApps: InstalledApps? = null
+    private var accessibilityStatus: AccessibilityStatus? = null
     private var background: ExecutorService? = null
     private val mainThread = Handler(Looper.getMainLooper())
 
     override fun onAttachedToEngine(binding: FlutterPlugin.FlutterPluginBinding) {
         appContext = binding.applicationContext
         installedApps = InstalledApps(binding.applicationContext)
+        accessibilityStatus = AccessibilityStatus(binding.applicationContext)
         background = Executors.newSingleThreadExecutor()
         methods = MethodChannel(binding.binaryMessenger, METHOD_CHANNEL).also {
             it.setMethodCallHandler(this)
@@ -47,6 +51,8 @@ class BlockerPlugin :
         methods = null
         events = null
         eventSink = null
+        accessibilityStatus?.stopWatching()
+        accessibilityStatus = null
         appContext = null
         installedApps = null
         background?.shutdownNow()
@@ -72,8 +78,8 @@ class BlockerPlugin :
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
         when (call.method) {
             "getInstalledApps" -> sendInstalledApps(result)
-            "isAccessibilityEnabled" -> result.success(stubBool(false))
-            "openAccessibilitySettings" -> result.success(stubNoOp())
+            "isAccessibilityEnabled" -> sendAccessibilityEnabled(result)
+            "openAccessibilitySettings" -> openAccessibilitySettings(result)
             "startSession" -> startStubSession(call, result)
             "endSession" -> {
                 stubSession = null
@@ -91,15 +97,38 @@ class BlockerPlugin :
 
     override fun onListen(arguments: Any?, sink: EventChannel.EventSink) {
         eventSink = sink
-        sink.success(accessibilityEvent(stubBool(false)))
+        accessibilityStatus?.watch { enabled -> eventSink?.success(accessibilityEvent(enabled)) }
     }
 
     override fun onCancel(arguments: Any?) {
+        accessibilityStatus?.stopWatching()
         eventSink = null
     }
 
     private fun accessibilityEvent(enabled: Boolean): Map<String, Any> =
         mapOf("type" to ACCESSIBILITY_CHANGED, "value" to enabled)
+
+    private fun sendAccessibilityEnabled(result: MethodChannel.Result) {
+        val status = accessibilityStatus
+        if (status == null) {
+            result.error(NOT_ATTACHED, "isAccessibilityEnabled called before the engine attached", null)
+            return
+        }
+        result.success(status.isEnabled())
+    }
+
+    private fun openAccessibilitySettings(result: MethodChannel.Result) {
+        val context = activity ?: appContext
+        if (context == null) {
+            result.error(NOT_ATTACHED, "openAccessibilitySettings called before the engine attached", null)
+            return
+        }
+        val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        runCatching { context.startActivity(intent) }
+            .onSuccess { result.success(null) }
+            .onFailure { result.error(SETTINGS_UNAVAILABLE, it.message, null) }
+    }
 
     private fun stubBool(value: Boolean): Boolean = value
 
@@ -159,5 +188,6 @@ class BlockerPlugin :
         const val BAD_ARGUMENTS = "bad_arguments"
         const val NOT_ATTACHED = "not_attached"
         const val INSTALLED_APPS_FAILED = "installed_apps_failed"
+        const val SETTINGS_UNAVAILABLE = "settings_unavailable"
     }
 }

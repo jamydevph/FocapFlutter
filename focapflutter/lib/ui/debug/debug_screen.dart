@@ -17,6 +17,7 @@ class DebugScreen extends ConsumerWidget {
     final state = ref.watch(debugViewModelProvider);
     final viewModel = ref.read(debugViewModelProvider.notifier);
     final event = state.lastAccessibilityEvent;
+    final service = state.accessibilityService;
 
     return Scaffold(
       appBar: AppBar(
@@ -35,6 +36,13 @@ class DebugScreen extends ConsumerWidget {
             Text(
               'Blocker: ${state.platformName}',
               style: FocapText.row.copyWith(color: colors.ink),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Accessibility service: ${service ?? 'checking…'}',
+              style: FocapText.row.copyWith(
+                color: service == 'on' ? colors.okText : colors.danger,
+              ),
             ),
             const SizedBox(height: 4),
             Text(

@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:focapflutter/data/models/app_info.dart';
 import 'package:focapflutter/data/services/blocker/blocker_platform.dart';
@@ -22,6 +22,7 @@ class DebugState {
     required this.platformName,
     this.results = const {},
     this.running = const {},
+    this.accessibilityService,
     this.lastAccessibilityEvent,
     this.installedApps = const [],
   });
@@ -29,18 +30,21 @@ class DebugState {
   final String platformName;
   final Map<String, String> results;
   final Set<String> running;
+  final String? accessibilityService;
   final String? lastAccessibilityEvent;
   final List<AppInfo> installedApps;
 
   DebugState copyWith({
     Map<String, String>? results,
     Set<String>? running,
+    String? accessibilityService,
     String? lastAccessibilityEvent,
     List<AppInfo>? installedApps,
   }) => DebugState(
     platformName: platformName,
     results: results ?? this.results,
     running: running ?? this.running,
+    accessibilityService: accessibilityService ?? this.accessibilityService,
     lastAccessibilityEvent:
         lastAccessibilityEvent ?? this.lastAccessibilityEvent,
     installedApps: installedApps ?? this.installedApps,
@@ -96,13 +100,38 @@ class DebugViewModel extends Notifier<DebugState> {
   DebugState build() {
     final blocker = ref.watch(blockerPlatformProvider);
     final subscription = blocker.accessibilityChanged.listen(
-      (enabled) => state = state.copyWith(lastAccessibilityEvent: '$enabled'),
+      (enabled) => state = state.copyWith(
+        accessibilityService: _onOff(enabled),
+        lastAccessibilityEvent: '$enabled at ${_clockTime()}',
+      ),
       onError: (Object error) =>
           state = state.copyWith(lastAccessibilityEvent: 'error: $error'),
     );
-    ref.onDispose(subscription.cancel);
+    final lifecycle = AppLifecycleListener(onResume: refreshAccessibility);
+    ref.onDispose(() {
+      subscription.cancel();
+      lifecycle.dispose();
+    });
+    Future.microtask(refreshAccessibility);
     return DebugState(platformName: '${blocker.runtimeType}');
   }
+
+  Future<void> refreshAccessibility() async {
+    if (!ref.mounted) return;
+    final blocker = ref.read(blockerPlatformProvider);
+    String reading;
+    try {
+      reading = _onOff(await blocker.isAccessibilityEnabled());
+    } on Object catch (error) {
+      reading = 'error: $error';
+    }
+    if (!ref.mounted) return;
+    state = state.copyWith(accessibilityService: reading);
+  }
+
+  String _onOff(bool enabled) => enabled ? 'on' : 'off';
+
+  String _clockTime() => DateTime.now().toIso8601String().substring(11, 19);
 
   Future<void> run(DebugCall call) async {
     if (!ref.mounted) return;
