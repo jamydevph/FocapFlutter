@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="accessibility_service_description">Focap uses this service to see which app comes to the front, so it can block the apps you picked while a focus session runs. It reads only the app\'s package name, never what is on the screen, and nothing it sees leaves your phone.</string>
+</resources>
