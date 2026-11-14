@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="block_background">#14163A</color>
+    <color name="block_text">#FFFFFF</color>
+    <color name="block_text_soft">#B9BCE0</color>
+    <color name="block_card">#12FFFFFF</color>
+    <color name="block_ring_outer">#12FFFFFF</color>
+    <color name="block_ring_inner">#1AFFFFFF</color>
+    <color name="block_cap">#D4FF4F</color>
+    <color name="block_badge">#4F46E5</color>
+    <color name="block_button">#FFFFFF</color>
+    <color name="block_button_text">#0E1024</color>
+    <color name="block_button_pressed">#1F0E1024</color>
+</resources>

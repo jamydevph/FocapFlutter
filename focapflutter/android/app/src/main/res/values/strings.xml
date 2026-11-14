@@ -1,4 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="accessibility_service_description">Focap uses this service to see which app comes to the front, so it can block the apps you picked while a focus session runs. It reads only the app\'s package name, never what is on the screen, and nothing it sees leaves your phone.</string>
+    <string name="block_title">%1$s is on pause</string>
+    <string name="block_subtitle">It’s blocked until your focus session ends.</string>
+    <string name="block_time_left">time left</string>
+    <string name="block_time_left_spoken">%1$s left</string>
+    <string name="block_go_home">Go home</string>
+    <string name="block_footnote">Want out early? End the session in Focap.</string>
 </resources>
