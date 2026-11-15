@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart' show ThemeMode;
 import 'package:flutter/services.dart';
 import 'package:focapflutter/data/models/app_info.dart';
 import 'package:focapflutter/data/models/native_session.dart';
@@ -43,12 +44,20 @@ class AndroidBlockerPlatform implements BlockerPlatform {
     required int endsAtMillis,
     required List<String> packages,
     required bool endSoundOn,
+    required ThemeMode themeMode,
   }) => _bool('startSession', {
     'sessionId': sessionId,
     'endsAtMillis': endsAtMillis,
     'packages': packages,
     'endSoundOn': endSoundOn,
+    'themeMode': _themeModeName(themeMode),
   });
+
+  String _themeModeName(ThemeMode mode) => switch (mode) {
+    ThemeMode.light => 'light',
+    ThemeMode.dark => 'dark',
+    ThemeMode.system => 'auto',
+  };
 
   @override
   Future<void> endSession() => methods.invokeMethod<void>('endSession');

@@ -26,7 +26,7 @@ class BlockerPlugin :
     private var eventSink: EventChannel.EventSink? = null
     private var appContext: Context? = null
     private var activity: Activity? = null
-    private var stubSession: Map<String, Any>? = null
+    private var sessionStore: SessionStore? = null
     private var installedApps: InstalledApps? = null
     private var accessibilityStatus: AccessibilityStatus? = null
     private var background: ExecutorService? = null
@@ -34,6 +34,7 @@ class BlockerPlugin :
 
     override fun onAttachedToEngine(binding: FlutterPlugin.FlutterPluginBinding) {
         appContext = binding.applicationContext
+        sessionStore = SessionStore(binding.applicationContext)
         installedApps = InstalledApps(binding.applicationContext)
         accessibilityStatus = AccessibilityStatus(binding.applicationContext)
         background = Executors.newSingleThreadExecutor()
@@ -54,6 +55,7 @@ class BlockerPlugin :
         accessibilityStatus?.stopWatching()
         accessibilityStatus = null
         appContext = null
+        sessionStore = null
         installedApps = null
         background?.shutdownNow()
         background = null
@@ -80,12 +82,9 @@ class BlockerPlugin :
             "getInstalledApps" -> sendInstalledApps(result)
             "isAccessibilityEnabled" -> sendAccessibilityEnabled(result)
             "openAccessibilitySettings" -> openAccessibilitySettings(result)
-            "startSession" -> startStubSession(call, result)
-            "endSession" -> {
-                stubSession = null
-                result.success(null)
-            }
-            "getActiveSession" -> result.success(activeStubSession())
+            "startSession" -> startSession(call, result)
+            "endSession" -> endSession(result)
+            "getActiveSession" -> sendActiveSession(result)
             "requestNotificationPermission" -> result.success(stubBool(false))
             "canScheduleExactAlarms" -> result.success(stubBool(true))
             "openExactAlarmSettings" -> result.success(stubNoOp())
@@ -136,49 +135,107 @@ class BlockerPlugin :
 
     private fun sendInstalledApps(result: MethodChannel.Result) {
         val apps = installedApps
-        val executor = background
-        if (apps == null || executor == null) {
+        if (apps == null) {
             result.error(NOT_ATTACHED, "getInstalledApps called before the engine attached", null)
             return
         }
-        executor.execute {
-            val outcome = runCatching { apps.list() }
-            mainThread.post {
-                if (methods == null) return@post
-                outcome
-                    .onSuccess { result.success(it) }
-                    .onFailure { result.error(INSTALLED_APPS_FAILED, it.message, null) }
+        replyFromBackground(result, "getInstalledApps", INSTALLED_APPS_FAILED) { apps.list() }
+    }
+
+    private fun startSession(call: MethodCall, result: MethodChannel.Result) {
+        val store = sessionStore
+        val context = appContext
+        if (store == null || context == null) {
+            result.error(NOT_ATTACHED, "startSession called before the engine attached", null)
+            return
+        }
+        val sessionId = call.argument<Any>("sessionId") as? String
+        val endsAtMillis = (call.argument<Any>("endsAtMillis") as? Number)?.toLong()
+            ?.takeIf { it > System.currentTimeMillis() }
+        val packages = (call.argument<Any>("packages") as? List<*>)
+            ?.takeIf { list -> list.all { it is String } }
+            ?.filterIsInstance<String>()
+        val endSoundOn = call.argument<Any>("endSoundOn") as? Boolean
+        val themeMode = BlockThemeMode.fromChannelValue(call.argument<Any>("themeMode") as? String)
+        if (sessionId == null || endsAtMillis == null || packages == null || endSoundOn == null ||
+            themeMode == null
+        ) {
+            val invalid = listOfNotNull(
+                "sessionId".takeIf { sessionId == null },
+                "endsAtMillis".takeIf { endsAtMillis == null },
+                "packages".takeIf { packages == null },
+                "endSoundOn".takeIf { endSoundOn == null },
+                "themeMode".takeIf { themeMode == null },
+            )
+            result.error(
+                BAD_ARGUMENTS,
+                "startSession is missing or has invalid ${invalid.joinToString()}",
+                null,
+            )
+            return
+        }
+        replyFromBackground(result, "startSession", SESSION_STORE_FAILED) {
+            store.save(
+                ActiveSession(
+                    sessionId = sessionId,
+                    endsAtMillis = endsAtMillis,
+                    blockedPackages = packages.toSet() - InstalledApps.neverBlockablePackages(context),
+                    endSoundOn = endSoundOn,
+                    themeMode = themeMode,
+                ),
+            )
+        }
+    }
+
+    private fun endSession(result: MethodChannel.Result) {
+        val store = sessionStore
+        if (store == null) {
+            result.error(NOT_ATTACHED, "endSession called before the engine attached", null)
+            return
+        }
+        replyFromBackground(result, "endSession", SESSION_STORE_FAILED) {
+            check(store.clear()) { "The session record could not be cleared" }
+            null
+        }
+    }
+
+    private fun sendActiveSession(result: MethodChannel.Result) {
+        val store = sessionStore
+        if (store == null) {
+            result.error(NOT_ATTACHED, "getActiveSession called before the engine attached", null)
+            return
+        }
+        replyFromBackground(result, "getActiveSession", SESSION_STORE_FAILED) {
+            store.active()?.let {
+                mapOf(
+                    "sessionId" to it.sessionId,
+                    "endsAtMillis" to it.endsAtMillis,
+                    "packages" to it.blockedPackages.sorted(),
+                )
             }
         }
     }
 
-    private fun startStubSession(call: MethodCall, result: MethodChannel.Result) {
-        val sessionId = call.argument<String>("sessionId")
-        val endsAtMillis = call.argument<Number>("endsAtMillis")?.toLong()
-        val packages = call.argument<List<String>>("packages")
-        val endSoundOn = call.argument<Boolean>("endSoundOn")
-        val missing = listOfNotNull(
-            "sessionId".takeIf { sessionId == null },
-            "endsAtMillis".takeIf { endsAtMillis == null },
-            "packages".takeIf { packages == null },
-            "endSoundOn".takeIf { endSoundOn == null },
-        )
-        if (missing.isNotEmpty()) {
-            result.error(BAD_ARGUMENTS, "startSession is missing ${missing.joinToString()}", null)
+    private fun replyFromBackground(
+        result: MethodChannel.Result,
+        method: String,
+        failureCode: String,
+        work: () -> Any?,
+    ) {
+        val executor = background
+        if (executor == null) {
+            result.error(NOT_ATTACHED, "$method called before the engine attached", null)
             return
         }
-        stubSession = mapOf(
-            "sessionId" to sessionId!!,
-            "endsAtMillis" to endsAtMillis!!,
-            "packages" to packages!!,
-        )
-        result.success(true)
-    }
-
-    private fun activeStubSession(): Map<String, Any>? {
-        val session = stubSession ?: return null
-        val endsAtMillis = session["endsAtMillis"] as Long
-        return if (System.currentTimeMillis() < endsAtMillis) session else null
+        executor.execute {
+            val outcome = runCatching(work)
+            mainThread.post {
+                if (methods == null) return@post
+                outcome
+                    .onSuccess { result.success(it) }
+                    .onFailure { result.error(failureCode, it.message, null) }
+            }
+        }
     }
 
     private companion object {
@@ -188,6 +245,7 @@ class BlockerPlugin :
         const val BAD_ARGUMENTS = "bad_arguments"
         const val NOT_ATTACHED = "not_attached"
         const val INSTALLED_APPS_FAILED = "installed_apps_failed"
+        const val SESSION_STORE_FAILED = "session_store_failed"
         const val SETTINGS_UNAVAILABLE = "settings_unavailable"
     }
 }

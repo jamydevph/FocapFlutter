@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart' show ThemeMode;
 import 'package:focapflutter/data/models/app_info.dart';
 import 'package:focapflutter/data/models/native_session.dart';
 
@@ -13,6 +14,7 @@ abstract interface class BlockerPlatform {
     required int endsAtMillis,
     required List<String> packages,
     required bool endSoundOn,
+    required ThemeMode themeMode,
   });
 
   Future<void> endSession();

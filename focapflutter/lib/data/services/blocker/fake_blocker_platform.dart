@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:typed_data';
 
+import 'package:flutter/material.dart' show ThemeMode;
 import 'package:focapflutter/data/models/app_info.dart';
 import 'package:focapflutter/data/models/native_session.dart';
 import 'package:focapflutter/data/services/blocker/blocker_platform.dart';
@@ -55,6 +56,7 @@ class FakeBlockerPlatform implements BlockerPlatform {
     required int endsAtMillis,
     required List<String> packages,
     required bool endSoundOn,
+    required ThemeMode themeMode,
   }) async {
     _session = NativeSession(
       sessionId: sessionId,
