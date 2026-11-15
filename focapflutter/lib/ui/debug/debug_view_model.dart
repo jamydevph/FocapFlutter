@@ -1,8 +1,12 @@
 import 'dart:async';
 
+import 'package:flutter/material.dart' show ThemeMode;
+import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:focapflutter/core/theme/theme_mode_provider.dart';
 import 'package:focapflutter/data/models/app_info.dart';
+import 'package:focapflutter/data/services/blocker/android_blocker_platform.dart';
 import 'package:focapflutter/data/services/blocker/blocker_platform.dart';
 import 'package:focapflutter/data/services/blocker/blocker_platform_provider.dart';
 import 'package:uuid/uuid.dart';
@@ -12,7 +16,8 @@ class DebugCall {
   const DebugCall(this.name, this.run, {this.opensSystemScreen = false});
 
   final String name;
-  final Future<Object?> Function(BlockerPlatform blocker) run;
+  final Future<Object?> Function(BlockerPlatform blocker, ThemeMode themeMode)
+  run;
   final bool opensSystemScreen;
 }
 
@@ -53,48 +58,68 @@ class DebugState {
 
 class DebugViewModel extends Notifier<DebugState> {
   static const testSessionLength = Duration(minutes: 2);
-  static const testPackage = 'com.jamydevph.stub';
+  static const testPackage = 'com.google.android.calendar';
+  static const neverBlockableTestPackage = 'com.android.settings';
+  static const badArgumentsCode = 'bad_arguments';
   static const installedAppsCall = 'getInstalledApps';
 
   static final calls = <DebugCall>[
-    DebugCall(installedAppsCall, (b) => b.getInstalledApps()),
-    DebugCall('isAccessibilityEnabled', (b) => b.isAccessibilityEnabled()),
+    DebugCall(installedAppsCall, (b, _) => b.getInstalledApps()),
+    DebugCall('isAccessibilityEnabled', (b, _) => b.isAccessibilityEnabled()),
     DebugCall(
       'openAccessibilitySettings',
-      (b) => b.openAccessibilitySettings(),
+      (b, _) => b.openAccessibilitySettings(),
       opensSystemScreen: true,
     ),
     DebugCall(
       'startSession',
-      (b) => b.startSession(
+      (b, themeMode) => b.startSession(
         sessionId: const Uuid().v4(),
         endsAtMillis: DateTime.now()
             .add(testSessionLength)
             .millisecondsSinceEpoch,
-        packages: const [testPackage],
+        packages: const [testPackage, neverBlockableTestPackage],
         endSoundOn: true,
+        themeMode: themeMode,
       ),
     ),
-    DebugCall('getActiveSession', (b) => b.getActiveSession()),
-    DebugCall('endSession', (b) => b.endSession()),
+    DebugCall(
+      'startSession with no arguments',
+      (b, _) => _startWithNoArguments(b),
+    ),
+    DebugCall('getActiveSession', (b, _) => b.getActiveSession()),
+    DebugCall('endSession', (b, _) => b.endSession()),
     DebugCall(
       'requestNotificationPermission',
-      (b) => b.requestNotificationPermission(),
+      (b, _) => b.requestNotificationPermission(),
       opensSystemScreen: true,
     ),
-    DebugCall('canScheduleExactAlarms', (b) => b.canScheduleExactAlarms()),
+    DebugCall('canScheduleExactAlarms', (b, _) => b.canScheduleExactAlarms()),
     DebugCall(
       'openExactAlarmSettings',
-      (b) => b.openExactAlarmSettings(),
+      (b, _) => b.openExactAlarmSettings(),
       opensSystemScreen: true,
     ),
-    DebugCall('areNotificationsEnabled', (b) => b.areNotificationsEnabled()),
+    DebugCall('areNotificationsEnabled', (b, _) => b.areNotificationsEnabled()),
     DebugCall(
       'openNotificationSettings',
-      (b) => b.openNotificationSettings(),
+      (b, _) => b.openNotificationSettings(),
       opensSystemScreen: true,
     ),
   ];
+
+  static Future<String?> _startWithNoArguments(BlockerPlatform blocker) async {
+    if (blocker is! AndroidBlockerPlatform) {
+      return 'skipped on ${blocker.runtimeType}';
+    }
+    try {
+      await blocker.methods.invokeMethod<bool>('startSession');
+    } on PlatformException catch (error) {
+      if (error.code == badArgumentsCode) return error.message;
+      rethrow;
+    }
+    throw StateError('startSession accepted a call with no arguments');
+  }
 
   @override
   DebugState build() {
@@ -141,7 +166,7 @@ class DebugViewModel extends Notifier<DebugState> {
     List<AppInfo>? apps;
     if (call.name == installedAppsCall) apps = const [];
     try {
-      final value = await call.run(blocker);
+      final value = await call.run(blocker, ref.read(themeModeProvider));
       if (value is List<AppInfo>) apps = value;
       outcome = 'ok: ${_describe(value)}';
     } on Object catch (error) {

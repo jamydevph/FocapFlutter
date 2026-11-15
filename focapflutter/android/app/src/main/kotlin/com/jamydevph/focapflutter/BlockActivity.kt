@@ -3,6 +3,7 @@ package com.jamydevph.focapflutter
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
+import android.content.res.Configuration
 import android.graphics.Typeface
 import android.graphics.drawable.Drawable
 import android.icu.text.MeasureFormat
@@ -25,16 +26,29 @@ import java.util.Locale
 class BlockActivity : Activity() {
 
     private val ticker = Handler(Looper.getMainLooper())
-    private var endsAtMillis = 0L
+    private val sessionStore by lazy { SessionStore(this) }
+    private var blockedPackage = ""
+    private var isStarted = false
     private var backCallback: OnBackInvokedCallback? = null
 
     private val tick = object : Runnable {
         override fun run() {
-            val remainingMillis = showTimeLeft()
-            if (remainingMillis > 0L) {
-                ticker.postDelayed(this, millisToNextSecond(remainingMillis))
+            if (!isStarted || isFinishing) return
+            val nowMillis = System.currentTimeMillis()
+            val session = sessionStore.active(nowMillis)
+            if (session == null || blockedPackage !in session.blockedPackages) {
+                goHome()
+                return
             }
+            val remainingMillis = showTimeLeft(session.endsAtMillis, nowMillis)
+            ticker.postDelayed(this, millisToNextSecond(remainingMillis))
         }
+    }
+
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(newBase)
+        val nightMode = SessionStore(newBase).read()?.themeMode?.uiNightMode ?: return
+        applyOverrideConfiguration(Configuration().apply { uiMode = nightMode })
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -61,16 +75,18 @@ class BlockActivity : Activity() {
 
     override fun onStart() {
         super.onStart()
-        ticker.removeCallbacks(tick)
-        ticker.post(tick)
+        isStarted = true
+        restartTick()
     }
 
     override fun onStop() {
+        isStarted = false
         ticker.removeCallbacks(tick)
         super.onStop()
     }
 
     override fun onDestroy() {
+        ticker.removeCallbacks(tick)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             backCallback?.let(onBackInvokedDispatcher::unregisterOnBackInvokedCallback)
         }
@@ -83,15 +99,16 @@ class BlockActivity : Activity() {
     }
 
     private fun bind(intent: Intent) {
-        val blockedPackage = intent.getStringExtra(EXTRA_BLOCKED_PACKAGE).orEmpty()
-        endsAtMillis = intent.getLongExtra(EXTRA_ENDS_AT_MILLIS, 0L)
+        blockedPackage = intent.getStringExtra(EXTRA_BLOCKED_PACKAGE).orEmpty()
         val (label, icon) = appIdentity(blockedPackage)
         val title = getString(R.string.block_title, label)
         findViewById<TextView>(R.id.block_title).text = title
         setTitle(title)
         findViewById<ImageView>(R.id.block_app_icon).setImageDrawable(icon?.let(::AppTileDrawable))
-        findViewById<View>(R.id.block_time_card).visibility =
-            if (endsAtMillis > 0L) View.VISIBLE else View.GONE
+        if (isStarted) restartTick()
+    }
+
+    private fun restartTick() {
         ticker.removeCallbacks(tick)
         ticker.post(tick)
     }
@@ -112,9 +129,8 @@ class BlockActivity : Activity() {
         label.toString().ifBlank { blockedPackage } to icon
     }.getOrDefault(blockedPackage to null)
 
-    private fun showTimeLeft(): Long {
-        if (endsAtMillis <= 0L) return 0L
-        val remainingMillis = (endsAtMillis - System.currentTimeMillis()).coerceAtLeast(0L)
+    private fun showTimeLeft(endsAtMillis: Long, nowMillis: Long): Long {
+        val remainingMillis = (endsAtMillis - nowMillis).coerceAtLeast(0L)
         val totalSeconds = (remainingMillis + MILLIS_PER_SECOND - 1) / MILLIS_PER_SECOND
         val hours = totalSeconds / SECONDS_PER_HOUR
         val minutes = (totalSeconds % SECONDS_PER_HOUR) / SECONDS_PER_MINUTE
@@ -243,17 +259,15 @@ class BlockActivity : Activity() {
 
     companion object {
         private const val EXTRA_BLOCKED_PACKAGE = "com.jamydevph.focapflutter.extra.BLOCKED_PACKAGE"
-        private const val EXTRA_ENDS_AT_MILLIS = "com.jamydevph.focapflutter.extra.ENDS_AT_MILLIS"
         private const val FLUTTER_FONTS = "flutter_assets/assets/fonts"
         private const val MILLIS_PER_SECOND = 1000L
         private const val SECONDS_PER_MINUTE = 60L
         private const val SECONDS_PER_HOUR = 3600L
         private const val RING_OFFSET_BELOW_TILE_DP = 80f
 
-        fun intent(context: Context, blockedPackage: String, endsAtMillis: Long): Intent =
+        fun intent(context: Context, blockedPackage: String): Intent =
             Intent(context, BlockActivity::class.java)
                 .putExtra(EXTRA_BLOCKED_PACKAGE, blockedPackage)
-                .putExtra(EXTRA_ENDS_AT_MILLIS, endsAtMillis)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
     }
 }
