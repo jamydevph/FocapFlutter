@@ -31,6 +31,10 @@ class FocapColors extends ThemeExtension<FocapColors> {
     required this.cap,
   });
 
+  static const onHero = Color(0xFFFFFFFF);
+
+  static const onHeroSoft = Color(0xFFB9BCE0);
+
   final Color bg;
 
   final Color surface;

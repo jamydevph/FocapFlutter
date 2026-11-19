@@ -23,6 +23,13 @@ abstract final class FocapShape {
     BoxShadow(color: Color(0x1A0E1024), offset: Offset(0, 12), blurRadius: 32),
   ];
 
+  static const shadowRaisedDark = [
+    BoxShadow(color: Color(0x73000000), offset: Offset(0, 12), blurRadius: 32),
+  ];
+
+  static List<BoxShadow> raised(Brightness brightness) =>
+      brightness == Brightness.dark ? shadowRaisedDark : shadowRaised;
+
   static const shadowNav = [
     BoxShadow(color: Color(0x400E1024), offset: Offset(0, 14), blurRadius: 30),
   ];
