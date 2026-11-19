@@ -10,6 +10,7 @@ class FakeAuthRepository implements AuthRepository {
   static const offlineDomain = '@offline.test';
   static const tooManyRequestsDomain = '@limit.test';
   static const disabledDomain = '@disabled.test';
+  static const takenDomain = '@taken.test';
 
   @override
   Future<void> signIn({required String email, required String password}) async {
@@ -18,6 +19,30 @@ class FakeAuthRepository implements AuthRepository {
     if (address.endsWith(wrongCredentialsDomain)) {
       throw const AuthException(AuthFailure.wrongCredentials);
     }
+    _throwForSharedDomains(address);
+  }
+
+  @override
+  Future<void> register({
+    required String firstName,
+    required String lastName,
+    required String email,
+    required String password,
+  }) async {
+    await Future<void>.delayed(delay);
+    final address = email.toLowerCase();
+    if (address.endsWith(takenDomain)) {
+      throw const AuthException(AuthFailure.emailAlreadyInUse);
+    }
+    if (address.endsWith(offlineDomain)) {
+      throw const AuthException(AuthFailure.network);
+    }
+    if (address.endsWith(tooManyRequestsDomain)) {
+      throw const AuthException(AuthFailure.tooManyRequests);
+    }
+  }
+
+  void _throwForSharedDomains(String address) {
     if (address.endsWith(offlineDomain)) {
       throw const AuthException(AuthFailure.network);
     }

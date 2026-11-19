@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:focapflutter/data/models/auth_failure.dart';
 import 'package:focapflutter/data/repositories/auth_repository_provider.dart';
 import 'package:focapflutter/ui/auth/auth_failure_message.dart';
+import 'package:focapflutter/ui/auth/auth_validation.dart';
 
 @immutable
 class LoginState {
@@ -22,14 +23,8 @@ class LoginState {
 
   String get trimmedEmail => email.trim();
 
-  String? get emailError {
-    if (!showErrors) return null;
-    if (trimmedEmail.isEmpty) return 'Enter your email.';
-    if (!LoginViewModel.emailPattern.hasMatch(trimmedEmail)) {
-      return 'Enter a valid email, like you@example.com.';
-    }
-    return null;
-  }
+  String? get emailError =>
+      showErrors ? AuthValidation.email(trimmedEmail) : null;
 
   String? get passwordError {
     if (!showErrors) return null;
@@ -38,9 +33,7 @@ class LoginState {
   }
 
   bool get isValid =>
-      trimmedEmail.isNotEmpty &&
-      LoginViewModel.emailPattern.hasMatch(trimmedEmail) &&
-      password.isNotEmpty;
+      AuthValidation.email(trimmedEmail) == null && password.isNotEmpty;
 
   LoginState copyWith({
     String? email,
@@ -59,8 +52,6 @@ class LoginState {
 }
 
 class LoginViewModel extends Notifier<LoginState> {
-  static final emailPattern = RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$');
-
   @override
   LoginState build() => const LoginState();
 
