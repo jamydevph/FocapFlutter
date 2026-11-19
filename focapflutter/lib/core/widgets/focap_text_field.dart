@@ -18,6 +18,8 @@ class FocapTextField extends StatefulWidget {
     this.focusNode,
     this.onChanged,
     this.onSubmitted,
+    this.textCapitalization = TextCapitalization.none,
+    this.errorSpacing = 16,
   });
 
   final String label;
@@ -32,6 +34,8 @@ class FocapTextField extends StatefulWidget {
   final FocusNode? focusNode;
   final ValueChanged<String>? onChanged;
   final ValueChanged<String>? onSubmitted;
+  final TextCapitalization textCapitalization;
+  final double errorSpacing;
 
   @override
   State<FocapTextField> createState() => _FocapTextFieldState();
@@ -110,6 +114,7 @@ class _FocapTextFieldState extends State<FocapTextField> {
               focusNode: _focusNode,
               enabled: widget.enabled,
               obscureText: widget.obscureText,
+              textCapitalization: widget.textCapitalization,
               keyboardType: widget.keyboardType,
               textInputAction: widget.textInputAction,
               autofillHints: widget.autofillHints,
@@ -140,7 +145,7 @@ class _FocapTextFieldState extends State<FocapTextField> {
             ),
           ),
           if (hasError) ...[
-            const SizedBox(height: 16),
+            SizedBox(height: widget.errorSpacing),
             FocapErrorRow(error, announce: false),
           ],
         ],
