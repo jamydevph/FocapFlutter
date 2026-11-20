@@ -20,6 +20,7 @@ class FocapTextField extends StatefulWidget {
     this.onSubmitted,
     this.textCapitalization = TextCapitalization.none,
     this.errorSpacing = 16,
+    this.fillColor,
   });
 
   final String label;
@@ -36,6 +37,7 @@ class FocapTextField extends StatefulWidget {
   final ValueChanged<String>? onSubmitted;
   final TextCapitalization textCapitalization;
   final double errorSpacing;
+  final Color? fillColor;
 
   @override
   State<FocapTextField> createState() => _FocapTextFieldState();
@@ -131,7 +133,7 @@ class _FocapTextFieldState extends State<FocapTextField> {
                   fontSize: 16,
                 ),
                 filled: true,
-                fillColor: colors.field,
+                fillColor: widget.fillColor ?? colors.field,
                 isDense: true,
                 contentPadding: const EdgeInsets.symmetric(
                   horizontal: 16,

@@ -7,4 +7,6 @@ abstract interface class AuthRepository {
     required String email,
     required String password,
   });
+
+  Future<void> sendPasswordReset({required String email});
 }
