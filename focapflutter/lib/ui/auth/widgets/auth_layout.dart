@@ -64,6 +64,10 @@ class AuthLayout extends StatelessWidget {
   static double sideFor(double width, double margin) =>
       math.max(margin, (width - maxContentWidth) / 2 + margin);
 
+  static double bottomGapFor(EdgeInsets insets, {required bool hasFooter}) =>
+      math.max(_bottomMargin, insets.bottom + 16) -
+      (hasFooter ? footerSlack : 0);
+
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
@@ -72,9 +76,7 @@ class AuthLayout extends StatelessWidget {
     final heroTop = heroSpec.topFor(insets.top);
     final heroHeight = heroSpec.heightFor(heroTop);
     final hasFooter = footer != null;
-    final bottomGap =
-        math.max(_bottomMargin, insets.bottom + 16) -
-        (hasFooter ? footerSlack : 0);
+    final bottomGap = bottomGapFor(insets, hasFooter: hasFooter);
     final side = sideFor(width - insets.left - insets.right, sideMargin);
     final heroSide = sideFor(
       width - insets.left - insets.right,
@@ -146,6 +148,84 @@ class AuthLayout extends StatelessWidget {
               right: 0,
               height: insets.top,
               child: ColoredBox(color: colors.hero),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class AuthPlainLayout extends StatelessWidget {
+  const AuthPlainLayout({
+    required this.content,
+    required this.button,
+    super.key,
+    this.footer,
+  });
+
+  final Widget content;
+  final Widget button;
+  final Widget? footer;
+
+  static const topMargin = 20.0;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final insets = MediaQuery.paddingOf(context);
+    final width = MediaQuery.sizeOf(context).width;
+    final side = AuthLayout.sideFor(
+      width - insets.left - insets.right,
+      AuthLayout.sideMargin,
+    );
+    final hasFooter = footer != null;
+
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: dark ? Brightness.light : Brightness.dark,
+        statusBarBrightness: dark ? Brightness.dark : Brightness.light,
+      ),
+      child: Scaffold(
+        backgroundColor: colors.bg,
+        body: Stack(
+          children: [
+            CustomScrollView(
+              slivers: [
+                SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: Padding(
+                    padding: EdgeInsets.fromLTRB(
+                      insets.left + side,
+                      insets.top + topMargin,
+                      insets.right + side,
+                      AuthLayout.bottomGapFor(insets, hasFooter: hasFooter),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        content,
+                        const Spacer(),
+                        const SizedBox(height: 32),
+                        button,
+                        if (footer case final footer?) ...[
+                          const SizedBox(height: 18 - AuthLayout.footerSlack),
+                          footer,
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              height: insets.top,
+              child: ColoredBox(color: colors.bg),
             ),
           ],
         ),
@@ -326,16 +406,27 @@ class AuthFooterLink extends StatelessWidget {
   }
 }
 
+enum AuthBackTone { hero, surface }
+
 class AuthBackButton extends StatelessWidget {
-  const AuthBackButton({required this.onPressed, super.key});
+  const AuthBackButton({
+    required this.onPressed,
+    super.key,
+    this.tone = AuthBackTone.hero,
+  });
 
   final VoidCallback? onPressed;
+  final AuthBackTone tone;
 
   static const double size = 44;
   static const _radius = BorderRadius.all(Radius.circular(14));
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
+    final onSurface = tone == AuthBackTone.surface;
+    final lightSurface =
+        onSurface && Theme.of(context).brightness == Brightness.light;
     return Semantics(
       button: true,
       enabled: onPressed != null,
@@ -349,18 +440,28 @@ class AuthBackButton extends StatelessWidget {
           dimension: AuthLayout.minTapTarget,
           child: Align(
             alignment: Alignment.topLeft,
-            child: Material(
-              color: FocapColors.onHero.withValues(alpha: 0.1),
-              borderRadius: _radius,
-              child: InkWell(
-                onTap: onPressed,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
                 borderRadius: _radius,
-                child: const SizedBox.square(
-                  dimension: size,
-                  child: Center(
-                    child: CustomPaint(
-                      size: Size.square(20),
-                      painter: _ChevronPainter(FocapColors.onHero),
+                boxShadow: lightSurface ? FocapShape.shadowSoft : null,
+              ),
+              child: Material(
+                color: onSurface
+                    ? colors.surface
+                    : FocapColors.onHero.withValues(alpha: 0.1),
+                borderRadius: _radius,
+                child: InkWell(
+                  onTap: onPressed,
+                  borderRadius: _radius,
+                  child: SizedBox.square(
+                    dimension: size,
+                    child: Center(
+                      child: CustomPaint(
+                        size: const Size.square(20),
+                        painter: _ChevronPainter(
+                          onSurface ? colors.ink : FocapColors.onHero,
+                        ),
+                      ),
                     ),
                   ),
                 ),

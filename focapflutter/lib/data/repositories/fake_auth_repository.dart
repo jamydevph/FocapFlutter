@@ -42,6 +42,18 @@ class FakeAuthRepository implements AuthRepository {
     }
   }
 
+  @override
+  Future<void> sendPasswordReset({required String email}) async {
+    await Future<void>.delayed(delay);
+    final address = email.toLowerCase();
+    if (address.endsWith(offlineDomain)) {
+      throw const AuthException(AuthFailure.network);
+    }
+    if (address.endsWith(tooManyRequestsDomain)) {
+      throw const AuthException(AuthFailure.tooManyRequests);
+    }
+  }
+
   void _throwForSharedDomains(String address) {
     if (address.endsWith(offlineDomain)) {
       throw const AuthException(AuthFailure.network);

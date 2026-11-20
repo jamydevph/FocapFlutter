@@ -183,7 +183,10 @@ class _LoginForm extends StatelessWidget {
               child: TextButton(
                 onPressed: state.submitting
                     ? null
-                    : () => context.push(AppRoutes.forgotPassword),
+                    : () => context.push(
+                        AppRoutes.forgotPassword,
+                        extra: state.trimmedEmail,
+                      ),
                 style: TextButton.styleFrom(
                   foregroundColor: colors.accentText,
                   padding: const EdgeInsets.symmetric(horizontal: 4),
