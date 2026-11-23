@@ -49,7 +49,19 @@ class DebugScreen extends ConsumerWidget {
               'accessibilityChanged: ${event ?? 'no event yet'}',
               style: FocapText.bodySmall.copyWith(color: colors.soft),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 4),
+            Text(
+              'Account: ${state.account}',
+              style: FocapText.bodySmall.copyWith(color: colors.soft),
+            ),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton(
+                onPressed: state.signingOut ? null : viewModel.signOut,
+                child: const Text('Sign out'),
+              ),
+            ),
+            const SizedBox(height: 8),
             SizedBox(
               width: double.infinity,
               child: FilledButton(

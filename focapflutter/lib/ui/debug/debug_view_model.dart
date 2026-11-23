@@ -6,6 +6,8 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:focapflutter/core/theme/theme_mode_provider.dart';
 import 'package:focapflutter/data/models/app_info.dart';
+import 'package:focapflutter/data/models/auth_failure.dart';
+import 'package:focapflutter/data/repositories/auth_repository_provider.dart';
 import 'package:focapflutter/data/services/blocker/android_blocker_platform.dart';
 import 'package:focapflutter/data/services/blocker/blocker_platform.dart';
 import 'package:focapflutter/data/services/blocker/blocker_platform_provider.dart';
@@ -25,6 +27,8 @@ class DebugCall {
 class DebugState {
   const DebugState({
     required this.platformName,
+    this.account = 'checking…',
+    this.signingOut = false,
     this.results = const {},
     this.running = const {},
     this.accessibilityService,
@@ -33,6 +37,8 @@ class DebugState {
   });
 
   final String platformName;
+  final String account;
+  final bool signingOut;
   final Map<String, String> results;
   final Set<String> running;
   final String? accessibilityService;
@@ -40,6 +46,8 @@ class DebugState {
   final List<AppInfo> installedApps;
 
   DebugState copyWith({
+    String? account,
+    bool? signingOut,
     Map<String, String>? results,
     Set<String>? running,
     String? accessibilityService,
@@ -47,6 +55,8 @@ class DebugState {
     List<AppInfo>? installedApps,
   }) => DebugState(
     platformName: platformName,
+    account: account ?? this.account,
+    signingOut: signingOut ?? this.signingOut,
     results: results ?? this.results,
     running: running ?? this.running,
     accessibilityService: accessibilityService ?? this.accessibilityService,
@@ -132,13 +142,52 @@ class DebugViewModel extends Notifier<DebugState> {
       onError: (Object error) =>
           state = state.copyWith(lastAccessibilityEvent: 'error: $error'),
     );
-    final lifecycle = AppLifecycleListener(onResume: refreshAccessibility);
+    final lifecycle = AppLifecycleListener(
+      onResume: () {
+        refreshAccessibility();
+        refreshAccount();
+      },
+    );
     ref.onDispose(() {
       subscription.cancel();
       lifecycle.dispose();
     });
     Future.microtask(refreshAccessibility);
-    return DebugState(platformName: '${blocker.runtimeType}');
+    return DebugState(
+      platformName: '${blocker.runtimeType}',
+      account: _describeAccount(),
+    );
+  }
+
+  String _describeAccount() {
+    final user = ref.read(authRepositoryProvider).currentUser;
+    if (user == null) return 'signed out';
+    return '${user.email ?? 'no email'} (${user.uid})';
+  }
+
+  void refreshAccount() {
+    if (!ref.mounted) return;
+    state = state.copyWith(account: _describeAccount());
+  }
+
+  Future<void> signOut() async {
+    if (!ref.mounted || state.signingOut) return;
+    state = state.copyWith(signingOut: true);
+    String? failure;
+    try {
+      await ref.read(authRepositoryProvider).signOut();
+    } on AuthException catch (error) {
+      failure = error.failure.name;
+    } on Object catch (error) {
+      failure = '$error';
+    }
+    if (!ref.mounted) return;
+    state = state.copyWith(
+      signingOut: false,
+      account: failure == null
+          ? _describeAccount()
+          : 'sign out failed: $failure',
+    );
   }
 
   Future<void> refreshAccessibility() async {
