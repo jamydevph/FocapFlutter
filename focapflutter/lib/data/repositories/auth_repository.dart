@@ -1,7 +1,11 @@
-abstract interface class AuthRepository {
-  Future<void> signIn({required String email, required String password});
+import 'package:focapflutter/data/models/user_profile.dart';
 
-  Future<void> register({
+abstract interface class AuthRepository {
+  UserProfile? get currentUser;
+
+  Future<UserProfile> signIn({required String email, required String password});
+
+  Future<UserProfile> register({
     required String firstName,
     required String lastName,
     required String email,
@@ -9,4 +13,6 @@ abstract interface class AuthRepository {
   });
 
   Future<void> sendPasswordReset({required String email});
+
+  Future<void> signOut();
 }
