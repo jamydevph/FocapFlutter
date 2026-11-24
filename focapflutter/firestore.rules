@@ -5,11 +5,22 @@ service cloud.firestore {
       allow read, delete: if request.auth != null && request.auth.uid == uid;
     }
     match /users/{uid} {
-      allow create, update: if request.auth != null && request.auth.uid == uid;
+      allow create, update: if request.auth != null && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['email', 'firstName', 'lastName', 'createdAt', 'updatedAt'])
+        && request.resource.data.email is string
+        && request.resource.data.firstName is string
+        && request.resource.data.lastName is string
+        && request.resource.data.createdAt is int
+        && request.resource.data.updatedAt is int;
     }
     match /users/{uid}/devices/{deviceId} {
       allow create, update: if request.auth != null && request.auth.uid == uid
-        && request.resource.data.platform in ['android', 'ios'];
+        && request.resource.data.keys().hasOnly(['deviceName', 'platform', 'appVersion', 'createdAt', 'lastActiveAt'])
+        && request.resource.data.platform in ['android', 'ios']
+        && request.resource.data.deviceName is string
+        && request.resource.data.appVersion is string
+        && request.resource.data.createdAt is int
+        && request.resource.data.lastActiveAt is int;
     }
     match /users/{uid}/focusSessions/{id} {
       allow create: if request.auth != null && request.auth.uid == uid

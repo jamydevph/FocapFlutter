@@ -28,6 +28,9 @@ class FirebaseAuthRepository implements AuthRepository {
   UserProfile? get currentUser => _service.currentUser;
 
   @override
+  Stream<UserProfile?> get authStateChanges => _service.authStateChanges();
+
+  @override
   Future<UserProfile> signIn({
     required String email,
     required String password,

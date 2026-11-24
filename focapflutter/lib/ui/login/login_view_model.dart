@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:focapflutter/data/models/auth_failure.dart';
+import 'package:focapflutter/data/repositories/account_repository_provider.dart';
 import 'package:focapflutter/data/repositories/auth_repository_provider.dart';
 import 'package:focapflutter/ui/auth/auth_failure_message.dart';
 import 'package:focapflutter/ui/auth/auth_validation.dart';
@@ -67,11 +70,15 @@ class LoginViewModel extends Notifier<LoginState> {
     if (!state.isValid) return false;
 
     state = state.copyWith(submitting: true);
+    final auth = ref.read(authRepositoryProvider);
+    final account = ref.read(accountRepositoryProvider);
     try {
-      await ref
-          .read(authRepositoryProvider)
-          .signIn(email: state.trimmedEmail, password: state.password);
-      if (!ref.mounted) return false;
+      final user = await auth.signIn(
+        email: state.trimmedEmail,
+        password: state.password,
+      );
+      unawaited(account.completeSignIn(user));
+      if (!ref.mounted) return true;
       state = state.copyWith(submitting: false);
       return true;
     } on AuthException catch (error) {
