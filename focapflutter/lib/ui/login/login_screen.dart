@@ -48,9 +48,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     FocusScope.of(context).unfocus();
     final viewModel = ref.read(loginViewModelProvider.notifier);
     final signedIn = await viewModel.submit();
+    if (signedIn) TextInput.finishAutofillContext();
     if (!mounted) return;
     if (signedIn) {
-      TextInput.finishAutofillContext();
       context.go(AppRoutes.dashboard);
       return;
     }

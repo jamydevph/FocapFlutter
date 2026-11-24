@@ -16,6 +16,7 @@ class RoutePlaceholder extends StatelessWidget {
     required this.path,
     this.links = const [],
     this.actions,
+    this.intro,
     super.key,
   });
 
@@ -23,6 +24,7 @@ class RoutePlaceholder extends StatelessWidget {
   final String path;
   final List<RouteLink> links;
   final List<Widget>? actions;
+  final String? intro;
 
   @override
   Widget build(BuildContext context) {
@@ -33,6 +35,10 @@ class RoutePlaceholder extends StatelessWidget {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
           children: [
+            if (intro case final intro?) ...[
+              Text(intro, style: FocapText.row.copyWith(color: colors.ink)),
+              const SizedBox(height: 8),
+            ],
             Text(
               'Route $path. Placeholder until this screen is built.',
               style: FocapText.body.copyWith(color: colors.soft),

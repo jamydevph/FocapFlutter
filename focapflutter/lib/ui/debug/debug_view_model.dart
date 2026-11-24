@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:focapflutter/core/theme/theme_mode_provider.dart';
 import 'package:focapflutter/data/models/app_info.dart';
 import 'package:focapflutter/data/models/auth_failure.dart';
+import 'package:focapflutter/data/repositories/account_repository_provider.dart';
 import 'package:focapflutter/data/repositories/auth_repository_provider.dart';
 import 'package:focapflutter/data/services/blocker/android_blocker_platform.dart';
 import 'package:focapflutter/data/services/blocker/blocker_platform.dart';
@@ -162,7 +163,9 @@ class DebugViewModel extends Notifier<DebugState> {
   String _describeAccount() {
     final user = ref.read(authRepositoryProvider).currentUser;
     if (user == null) return 'signed out';
-    return '${user.email ?? 'no email'} (${user.uid})';
+    final sync = ref.read(accountRepositoryProvider).lastSync?.name;
+    return '${user.email ?? 'no email'} (${user.uid}), '
+        'last sync: ${sync ?? 'none yet'}';
   }
 
   void refreshAccount() {

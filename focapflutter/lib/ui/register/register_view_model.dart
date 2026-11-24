@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:focapflutter/data/models/auth_failure.dart';
+import 'package:focapflutter/data/repositories/account_repository_provider.dart';
 import 'package:focapflutter/data/repositories/auth_repository_provider.dart';
 import 'package:focapflutter/ui/auth/auth_failure_message.dart';
 import 'package:focapflutter/ui/auth/auth_validation.dart';
@@ -113,15 +116,24 @@ class RegisterViewModel extends Notifier<RegisterState> {
 
     state = state.copyWith(submitting: true);
     try {
-      await ref
-          .read(authRepositoryProvider)
-          .register(
-            firstName: state.trimmedFirstName,
-            lastName: state.trimmedLastName,
-            email: state.trimmedEmail,
-            password: state.password,
-          );
-      if (!ref.mounted) return false;
+      final firstName = state.trimmedFirstName;
+      final lastName = state.trimmedLastName;
+      final auth = ref.read(authRepositoryProvider);
+      final account = ref.read(accountRepositoryProvider);
+      final user = await auth.register(
+        firstName: firstName,
+        lastName: lastName,
+        email: state.trimmedEmail,
+        password: state.password,
+      );
+      unawaited(
+        account.completeRegister(
+          user,
+          firstName: firstName,
+          lastName: lastName,
+        ),
+      );
+      if (!ref.mounted) return true;
       state = state.copyWith(submitting: false);
       return true;
     } on AuthException catch (error) {

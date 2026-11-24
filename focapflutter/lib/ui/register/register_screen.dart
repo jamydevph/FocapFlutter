@@ -50,9 +50,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     FocusScope.of(context).unfocus();
     final viewModel = ref.read(registerViewModelProvider.notifier);
     final registered = await viewModel.submit();
+    if (registered) TextInput.finishAutofillContext();
     if (!mounted) return;
     if (registered) {
-      TextInput.finishAutofillContext();
       context.go(AppRoutes.dashboard);
       return;
     }

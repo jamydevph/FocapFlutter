@@ -3,6 +3,8 @@ import 'package:focapflutter/data/models/user_profile.dart';
 abstract interface class AuthRepository {
   UserProfile? get currentUser;
 
+  Stream<UserProfile?> get authStateChanges;
+
   Future<UserProfile> signIn({required String email, required String password});
 
   Future<UserProfile> register({
