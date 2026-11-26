@@ -4,18 +4,15 @@ class PreferencesService {
   PreferencesService(this._prefs);
 
   static const loggedInKey = 'logged_in';
-  static const deviceIdKey = 'device_id';
-  static const userIdKey = 'user_id';
-  static const firstNameKey = 'first_name';
-  static const lastNameKey = 'last_name';
 
-  static const keys = {
-    loggedInKey,
-    deviceIdKey,
-    userIdKey,
-    firstNameKey,
-    lastNameKey,
-  };
+  static const legacyAccountKeys = [
+    'first_name',
+    'last_name',
+    'device_id',
+    'user_id',
+  ];
+
+  static const keys = {loggedInKey, ...legacyAccountKeys};
 
   static Future<PreferencesService> open() async => PreferencesService(
     await SharedPreferencesWithCache.create(
@@ -29,29 +26,13 @@ class PreferencesService {
 
   Future<void> setLoggedIn(bool value) => _prefs.setBool(loggedInKey, value);
 
-  String? get deviceId => _prefs.getString(deviceIdKey);
+  Map<String, String> legacyAccountValues() => {
+    for (final key in legacyAccountKeys) key: ?_prefs.getString(key),
+  };
 
-  Future<void> setDeviceId(String value) =>
-      _prefs.setString(deviceIdKey, value);
-
-  String? get userId => _prefs.getString(userIdKey);
-
-  Future<void> setUserId(String value) => _prefs.setString(userIdKey, value);
-
-  String? get firstName => _prefs.getString(firstNameKey);
-
-  String? get lastName => _prefs.getString(lastNameKey);
-
-  Future<void> setNames({
-    required String firstName,
-    required String lastName,
-  }) async {
-    await _prefs.setString(firstNameKey, firstName);
-    await _prefs.setString(lastNameKey, lastName);
-  }
-
-  Future<void> clearNames() async {
-    await _prefs.remove(firstNameKey);
-    await _prefs.remove(lastNameKey);
+  Future<void> removeLegacyAccountValues() async {
+    for (final key in legacyAccountKeys) {
+      await _prefs.remove(key);
+    }
   }
 }

@@ -5,6 +5,7 @@ import 'package:focapflutter/data/models/user_profile.dart';
 import 'package:focapflutter/data/services/auth_service.dart';
 import 'package:focapflutter/data/services/device_info_service.dart';
 import 'package:focapflutter/data/services/firestore_service.dart';
+import 'package:focapflutter/data/services/local_database.dart';
 import 'package:focapflutter/data/services/package_info_service.dart';
 import 'package:focapflutter/data/services/preferences_service.dart';
 import 'package:uuid/uuid.dart';
@@ -36,10 +37,16 @@ class AccountRepository {
     required this._auth,
     required this._firestore,
     required this._preferences,
+    required this._database,
     required this._deviceInfo,
     required this._packageInfo,
     DateTime Function()? clock,
   }) : _clock = clock ?? DateTime.now;
+
+  static const deviceIdKey = 'device_id';
+  static const userIdKey = 'user_id';
+  static const firstNameKey = 'first_name';
+  static const lastNameKey = 'last_name';
 
   static const _platform = 'android';
   static const _lostSessionCodes = {
@@ -51,6 +58,7 @@ class AccountRepository {
   final AuthService _auth;
   final FirestoreService _firestore;
   final PreferencesService _preferences;
+  final LocalDatabase _database;
   final DeviceInfoService _deviceInfo;
   final PackageInfoService _packageInfo;
   final DateTime Function() _clock;
@@ -61,17 +69,41 @@ class AccountRepository {
   Future<AccountSync> _queue = Future.value(AccountSync.synced);
 
   SavedNames get savedNames {
-    final owner = _preferences.userId;
+    final owner = _database.meta(userIdKey);
     if (owner == null || owner != _auth.currentUser?.uid) {
       return const SavedNames();
     }
     return SavedNames(
-      firstName: _preferences.firstName,
-      lastName: _preferences.lastName,
+      firstName: _database.meta(firstNameKey),
+      lastName: _database.meta(lastNameKey),
     );
   }
 
   Stream<SavedNames> get savedNamesChanges => _namesController.stream;
+
+  static Future<void> moveLegacyAccountValues(
+    PreferencesService preferences,
+    LocalDatabase database,
+  ) async {
+    final legacy = preferences.legacyAccountValues();
+    if (legacy.isEmpty) return;
+    final moved = <String, String>{};
+    final legacyDevice = legacy[deviceIdKey];
+    if (legacyDevice != null && database.meta(deviceIdKey) == null) {
+      moved[deviceIdKey] = legacyDevice;
+    }
+    final legacyUser = legacy[userIdKey];
+    final metaUser = database.meta(userIdKey);
+    if (legacyUser != null && (metaUser == null || metaUser == legacyUser)) {
+      moved[userIdKey] = legacyUser;
+      for (final key in const [firstNameKey, lastNameKey]) {
+        final value = legacy[key];
+        if (value != null && database.meta(key) == null) moved[key] = value;
+      }
+    }
+    await database.setMeta(moved);
+    await preferences.removeLegacyAccountValues();
+  }
 
   bool get loggedInHint => _preferences.loggedIn;
 
@@ -102,14 +134,14 @@ class AccountRepository {
     bool stale() => !still() || !_isCurrent(user);
 
     if (stale()) return AccountSync.superseded;
-    final sameUser = _preferences.userId == user.uid;
+    final sameUser = _database.meta(userIdKey) == user.uid;
     if (!sameUser) {
-      await _preferences.clearNames();
+      await _database.deleteMeta(const [firstNameKey, lastNameKey]);
       _publishNames();
     }
     final deviceId = await _ensureDeviceId();
     if (stale()) return AccountSync.superseded;
-    await _preferences.setUserId(user.uid);
+    await _database.setMeta({userIdKey: user.uid});
     if (registeredNames != null) {
       await _saveNames(registeredNames);
     }
@@ -220,18 +252,18 @@ class AccountRepository {
   }
 
   Future<String> _ensureDeviceId() async {
-    final existing = _preferences.deviceId;
+    final existing = _database.meta(deviceIdKey);
     if (existing != null && existing.isNotEmpty) return existing;
     final created = const Uuid().v4();
-    await _preferences.setDeviceId(created);
+    await _database.setMeta({deviceIdKey: created});
     return created;
   }
 
   Future<void> _saveNames(SavedNames names) async {
-    await _preferences.setNames(
-      firstName: names.firstName ?? '',
-      lastName: names.lastName ?? '',
-    );
+    await _database.setMeta({
+      firstNameKey: names.firstName ?? '',
+      lastNameKey: names.lastName ?? '',
+    });
     _publishNames();
   }
 

@@ -61,6 +61,27 @@ class DebugScreen extends ConsumerWidget {
                 child: const Text('Sign out'),
               ),
             ),
+            Text(
+              'Local data: ${state.localData}',
+              style: FocapText.bodySmall.copyWith(color: colors.soft),
+            ),
+            Wrap(
+              spacing: 8,
+              children: [
+                TextButton(
+                  onPressed: state.writingLocalData
+                      ? null
+                      : viewModel.toggleTestSelection,
+                  child: const Text('Toggle Calendar pick'),
+                ),
+                TextButton(
+                  onPressed: state.writingLocalData
+                      ? null
+                      : viewModel.writeDummySession,
+                  child: const Text('Write a dummy session'),
+                ),
+              ],
+            ),
             const SizedBox(height: 8),
             SizedBox(
               width: double.infinity,

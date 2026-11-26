@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:focapflutter/data/repositories/account_repository.dart';
 import 'package:focapflutter/data/repositories/auth_repository_provider.dart';
+import 'package:focapflutter/data/repositories/local_data_providers.dart';
 import 'package:focapflutter/data/services/device_info_service.dart';
 import 'package:focapflutter/data/services/firestore_service.dart';
 import 'package:focapflutter/data/services/package_info_service.dart';
@@ -21,6 +22,7 @@ final accountRepositoryProvider = Provider<AccountRepository>((ref) {
     auth: ref.watch(authServiceProvider),
     firestore: ref.watch(firestoreServiceProvider),
     preferences: ref.watch(preferencesServiceProvider),
+    database: ref.watch(localDatabaseProvider),
     deviceInfo: DeviceInfoService(),
     packageInfo: PackageInfoService(),
   );
