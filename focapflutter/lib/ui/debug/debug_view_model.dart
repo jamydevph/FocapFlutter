@@ -7,8 +7,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:focapflutter/core/theme/theme_mode_provider.dart';
 import 'package:focapflutter/data/models/app_info.dart';
 import 'package:focapflutter/data/models/auth_failure.dart';
+import 'package:focapflutter/data/models/focus_session.dart';
+import 'package:focapflutter/data/models/session_status.dart';
+import 'package:focapflutter/data/repositories/account_repository.dart';
 import 'package:focapflutter/data/repositories/account_repository_provider.dart';
 import 'package:focapflutter/data/repositories/auth_repository_provider.dart';
+import 'package:focapflutter/data/repositories/local_data_providers.dart';
 import 'package:focapflutter/data/services/blocker/android_blocker_platform.dart';
 import 'package:focapflutter/data/services/blocker/blocker_platform.dart';
 import 'package:focapflutter/data/services/blocker/blocker_platform_provider.dart';
@@ -30,6 +34,8 @@ class DebugState {
     required this.platformName,
     this.account = 'checking…',
     this.signingOut = false,
+    this.localData = 'checking…',
+    this.writingLocalData = false,
     this.results = const {},
     this.running = const {},
     this.accessibilityService,
@@ -40,6 +46,8 @@ class DebugState {
   final String platformName;
   final String account;
   final bool signingOut;
+  final String localData;
+  final bool writingLocalData;
   final Map<String, String> results;
   final Set<String> running;
   final String? accessibilityService;
@@ -49,6 +57,8 @@ class DebugState {
   DebugState copyWith({
     String? account,
     bool? signingOut,
+    String? localData,
+    bool? writingLocalData,
     Map<String, String>? results,
     Set<String>? running,
     String? accessibilityService,
@@ -58,6 +68,8 @@ class DebugState {
     platformName: platformName,
     account: account ?? this.account,
     signingOut: signingOut ?? this.signingOut,
+    localData: localData ?? this.localData,
+    writingLocalData: writingLocalData ?? this.writingLocalData,
     results: results ?? this.results,
     running: running ?? this.running,
     accessibilityService: accessibilityService ?? this.accessibilityService,
@@ -147,6 +159,7 @@ class DebugViewModel extends Notifier<DebugState> {
       onResume: () {
         refreshAccessibility();
         refreshAccount();
+        refreshLocalData();
       },
     );
     ref.onDispose(() {
@@ -154,6 +167,7 @@ class DebugViewModel extends Notifier<DebugState> {
       lifecycle.dispose();
     });
     Future.microtask(refreshAccessibility);
+    Future.microtask(refreshLocalData);
     return DebugState(
       platformName: '${blocker.runtimeType}',
       account: _describeAccount(),
@@ -191,6 +205,93 @@ class DebugViewModel extends Notifier<DebugState> {
           ? _describeAccount()
           : 'sign out failed: $failure',
     );
+  }
+
+  static const testLabel = 'Calendar';
+
+  Future<void> refreshLocalData() async {
+    if (!ref.mounted) return;
+    String summary;
+    try {
+      summary = await _describeLocalData();
+    } on Object catch (error) {
+      summary = 'error: $error';
+    }
+    if (!ref.mounted) return;
+    state = state.copyWith(localData: summary);
+  }
+
+  Future<String> _describeLocalData() async {
+    final selections = await ref.read(appSelectionRepositoryProvider).load();
+    final blocked = selections.where((s) => s.isBlocked).length;
+    final user = ref.read(authRepositoryProvider).currentUser;
+    if (user == null) {
+      return '${selections.length} selections ($blocked blocked), signed out';
+    }
+    final sessions = await ref
+        .read(sessionRepositoryProvider)
+        .forUser(user.uid);
+    final newest = sessions.isEmpty
+        ? 'none'
+        : '${sessions.first.id.substring(0, 8)} ${sessions.first.status.name}';
+    return '${selections.length} selections ($blocked blocked), '
+        '${sessions.length} sessions, newest: $newest';
+  }
+
+  Future<void> toggleTestSelection() => _writeLocalData(() async {
+    final repository = ref.read(appSelectionRepositoryProvider);
+    final current = await repository.blockedPackages();
+    await repository.setBlocked(
+      packageName: testPackage,
+      label: testLabel,
+      blocked: !current.contains(testPackage),
+    );
+  });
+
+  Future<void> writeDummySession() => _writeLocalData(() async {
+    final user = ref.read(authRepositoryProvider).currentUser;
+    if (user == null) throw StateError('sign in first');
+    final deviceId = ref
+        .read(localDatabaseProvider)
+        .meta(AccountRepository.deviceIdKey);
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final started = now - testSessionLength.inMilliseconds;
+    await ref
+        .read(sessionRepositoryProvider)
+        .save(
+          FocusSession(
+            id: const Uuid().v4(),
+            userId: user.uid,
+            deviceId: deviceId ?? 'unknown',
+            durationMinutes: testSessionLength.inMinutes,
+            startedAt: started,
+            endsAt: now,
+            endedAt: now,
+            status: SessionStatus.completed,
+            endReason: SessionEndReason.expired,
+            selectedPackages: const [testPackage],
+            appCount: 1,
+            updatedAt: now,
+          ),
+        );
+  });
+
+  Future<void> _writeLocalData(Future<void> Function() write) async {
+    if (!ref.mounted || state.writingLocalData) return;
+    state = state.copyWith(writingLocalData: true);
+    String? failure;
+    try {
+      await write();
+    } on Object catch (error) {
+      failure = 'error: $error';
+    }
+    if (!ref.mounted) return;
+    state = state.copyWith(writingLocalData: false);
+    if (failure != null) {
+      state = state.copyWith(localData: failure);
+    } else {
+      await refreshLocalData();
+    }
   }
 
   Future<void> refreshAccessibility() async {
