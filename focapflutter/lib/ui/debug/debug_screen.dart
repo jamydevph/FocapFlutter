@@ -6,6 +6,7 @@ import 'package:focapflutter/core/theme/app_shape.dart';
 import 'package:focapflutter/core/theme/app_typography.dart';
 import 'package:focapflutter/data/models/app_info.dart';
 import 'package:focapflutter/ui/debug/debug_view_model.dart';
+import 'package:focapflutter/ui/debug/session_rules_debug_section.dart';
 import 'package:go_router/go_router.dart';
 
 class DebugScreen extends ConsumerWidget {
@@ -83,6 +84,8 @@ class DebugScreen extends ConsumerWidget {
               ],
             ),
             const SizedBox(height: 8),
+            const SessionRulesDebugSection(),
+            const SizedBox(height: 16),
             SizedBox(
               width: double.infinity,
               child: FilledButton(
