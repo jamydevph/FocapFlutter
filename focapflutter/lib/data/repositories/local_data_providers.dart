@@ -1,6 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:focapflutter/data/repositories/app_selection_repository.dart';
+import 'package:focapflutter/data/repositories/installed_apps_repository.dart';
 import 'package:focapflutter/data/repositories/session_repository.dart';
+import 'package:focapflutter/data/services/blocker/blocker_platform_provider.dart';
 import 'package:focapflutter/data/services/local_database.dart';
 
 final localDatabaseProvider = Provider<LocalDatabase>(
@@ -15,4 +17,8 @@ final appSelectionRepositoryProvider = Provider<AppSelectionRepository>(
 
 final sessionRepositoryProvider = Provider<SessionRepository>(
   (ref) => SessionRepository(ref.watch(localDatabaseProvider)),
+);
+
+final installedAppsRepositoryProvider = Provider<InstalledAppsRepository>(
+  (ref) => InstalledAppsRepository(ref.watch(blockerPlatformProvider)),
 );
