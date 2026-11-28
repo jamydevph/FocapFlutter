@@ -9,6 +9,7 @@ class FocapPrimaryButton extends StatelessWidget {
     required this.onPressed,
     super.key,
     this.showArrow = false,
+    this.showExternal = false,
     this.busy = false,
     this.busyLabel,
   });
@@ -16,6 +17,7 @@ class FocapPrimaryButton extends StatelessWidget {
   final String label;
   final VoidCallback? onPressed;
   final bool showArrow;
+  final bool showExternal;
   final bool busy;
   final String? busyLabel;
 
@@ -77,11 +79,13 @@ class FocapPrimaryButton extends StatelessWidget {
                                 ),
                               ),
                             ),
-                            if (showArrow) ...[
+                            if (showArrow || showExternal) ...[
                               const SizedBox(width: 8),
                               CustomPaint(
                                 size: const Size.square(18),
-                                painter: _ArrowPainter(colors.onAccent),
+                                painter: showExternal
+                                    ? _ExternalPainter(colors.onAccent)
+                                    : _ArrowPainter(colors.onAccent),
                               ),
                             ],
                           ],
@@ -122,4 +126,33 @@ class _ArrowPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_ArrowPainter oldDelegate) => oldDelegate.color != color;
+}
+
+class _ExternalPainter extends CustomPainter {
+  const _ExternalPainter(this.color);
+
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final scale = size.width / 18;
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.65 * scale
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+    final corner = Offset(12.75 * scale, 5.25 * scale);
+    final path = Path()
+      ..moveTo(5.25 * scale, 12.75 * scale)
+      ..lineTo(corner.dx, corner.dy)
+      ..moveTo(6.75 * scale, corner.dy)
+      ..lineTo(corner.dx, corner.dy)
+      ..lineTo(corner.dx, 11.25 * scale);
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(_ExternalPainter oldDelegate) =>
+      oldDelegate.color != color;
 }

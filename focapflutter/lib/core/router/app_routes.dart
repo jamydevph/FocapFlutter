@@ -13,4 +13,12 @@ abstract final class AppRoutes {
   static const debugTokens = '/debug/tokens';
 
   static const public = {login, register, forgotPassword};
+
+  static const reachableWithoutAccessibility = {
+    permissions,
+    settings,
+    editProfile,
+    debug,
+    debugTokens,
+  };
 }

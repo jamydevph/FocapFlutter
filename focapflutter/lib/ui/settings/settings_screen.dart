@@ -19,7 +19,7 @@ class SettingsScreen extends StatelessWidget {
         ),
         RouteLink(
           'Accessibility → Permission',
-          () => context.push(AppRoutes.permissions),
+          () => context.go(AppRoutes.permissions),
         ),
         RouteLink('Log out → Login', () => context.go(AppRoutes.login)),
         if (kDebugMode)
