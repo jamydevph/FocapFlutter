@@ -2,9 +2,12 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:focapflutter/app.dart';
+import 'package:focapflutter/core/permissions/accessibility_status.dart';
 import 'package:focapflutter/data/repositories/account_repository.dart';
 import 'package:focapflutter/data/repositories/account_repository_provider.dart';
 import 'package:focapflutter/data/repositories/local_data_providers.dart';
+import 'package:focapflutter/data/repositories/permission_repository.dart';
+import 'package:focapflutter/data/services/blocker/blocker_platform_provider.dart';
 import 'package:focapflutter/data/services/firestore_service.dart';
 import 'package:focapflutter/data/services/local_database.dart';
 import 'package:focapflutter/data/services/preferences_service.dart';
@@ -29,9 +32,14 @@ Future<void> main() async {
   } on Object catch (error, stack) {
     _reportStartup(error, stack, 'moving saved account values');
   }
+  final blocker = createBlockerPlatform();
+  final accessibilityOn = await PermissionRepository(blocker)
+      .isAccessibilityEnabled();
   runApp(
     ProviderScope(
       overrides: [
+        blockerPlatformProvider.overrideWithValue(blocker),
+        initialAccessibilityProvider.overrideWithValue(accessibilityOn),
         preferencesServiceProvider.overrideWithValue(preferences),
         localDatabaseProvider.overrideWithValue(database),
       ],

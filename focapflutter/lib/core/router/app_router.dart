@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:focapflutter/core/permissions/accessibility_status.dart';
 import 'package:focapflutter/core/router/app_redirect.dart';
 import 'package:focapflutter/core/router/app_routes.dart';
 import 'package:focapflutter/ui/app_selection/app_selection_screen.dart';
@@ -22,8 +23,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
   final router = GoRouter(
     navigatorKey: GlobalKey<NavigatorState>(debugLabel: 'root'),
     initialLocation: AppRoutes.dashboard,
-    redirect: (context, state) =>
-        appRedirect(state, signedIn: ref.read(isSignedInProvider)),
+    redirect: (context, state) => appRedirect(
+      state,
+      signedIn: ref.read(isSignedInProvider),
+      accessibilityOn: ref.read(accessibilityEnabledProvider),
+    ),
     onException: (context, state, router) => router.go(AppRoutes.dashboard),
     routes: [
       GoRoute(
@@ -97,7 +101,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
     ],
   );
-  ref.listen(isSignedInProvider, (previous, next) => router.refresh());
+  ref
+    ..listen(isSignedInProvider, (previous, next) => router.refresh())
+    ..listen(
+      accessibilityEnabledProvider,
+      (previous, next) => router.refresh(),
+    );
   ref.onDispose(router.dispose);
   return router;
 });

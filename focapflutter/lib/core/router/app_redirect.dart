@@ -31,9 +31,20 @@ class AuthSession extends Notifier<bool> {
 
 final isSignedInProvider = NotifierProvider<AuthSession, bool>(AuthSession.new);
 
-String? appRedirect(GoRouterState state, {required bool signedIn}) {
-  final isPublic = AppRoutes.public.contains(state.matchedLocation);
-  if (!signedIn && !isPublic) return AppRoutes.login;
-  if (signedIn && isPublic) return AppRoutes.dashboard;
+String? appRedirect(
+  GoRouterState state, {
+  required bool signedIn,
+  required bool accessibilityOn,
+}) {
+  final location = state.matchedLocation;
+  final isPublic = AppRoutes.public.contains(location);
+  if (!signedIn) return isPublic ? null : AppRoutes.login;
+  if (isPublic) return AppRoutes.dashboard;
+  if (!accessibilityOn) {
+    return AppRoutes.reachableWithoutAccessibility.contains(location)
+        ? null
+        : AppRoutes.permissions;
+  }
+  if (location == AppRoutes.permissions) return AppRoutes.dashboard;
   return null;
 }
